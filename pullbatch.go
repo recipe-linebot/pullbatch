@@ -18,14 +18,14 @@ import (
 	"time"
 )
 
-type PullingProgress struct {
+type PullProgress struct {
 	AllCategories     RecipeAllCategory
 	LargeCategoryIdx  int
 	MediumCategoryIdx int
 	SmallCategoryIdx  int
 }
 
-func restorePullingProgress(restorePath string, progress *PullingProgress) error {
+func restoreProgress(restorePath string, progress *PullProgress) error {
 	restoreFile, err := os.Open(restorePath)
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func restorePullingProgress(restorePath string, progress *PullingProgress) error
 	return decoder.Decode(&progress)
 }
 
-func storePullingProgress(progress *PullingProgress, storePath string) error {
+func storeProgress(progress *PullProgress, storePath string) error {
 	storeFile, err := os.OpenFile(storePath, os.O_WRONLY+os.O_CREATE, 0644)
 	if err != nil {
 		return err
@@ -127,9 +127,9 @@ func pullRecipes(config *RecipeLinebotConfig) {
 	log.Print("start pull batch")
 
 	// Restore the progress up to the previous working
-	var progress PullingProgress
+	var progress PullProgress
 	restored := true
-	err := restorePullingProgress(config.PullBatch.ProgressFilePath, &progress)
+	err := restoreProgress(config.PullBatch.ProgressFilePath, &progress)
 	if err != nil {
 		if os.IsNotExist(err) {
 			restored = false
@@ -154,7 +154,7 @@ func pullRecipes(config *RecipeLinebotConfig) {
 			log.Fatal(err)
 		}
 		progress.LargeCategoryIdx = idx
-		err = storePullingProgress(&progress, config.PullBatch.ProgressFilePath)
+		err = storeProgress(&progress, config.PullBatch.ProgressFilePath)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -173,7 +173,7 @@ func pullRecipes(config *RecipeLinebotConfig) {
 			log.Fatal(err)
 		}
 		progress.MediumCategoryIdx = idx
-		err = storePullingProgress(&progress, config.PullBatch.ProgressFilePath)
+		err = storeProgress(&progress, config.PullBatch.ProgressFilePath)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -192,7 +192,7 @@ func pullRecipes(config *RecipeLinebotConfig) {
 			log.Fatal(err)
 		}
 		progress.SmallCategoryIdx = idx
-		err = storePullingProgress(&progress, config.PullBatch.ProgressFilePath)
+		err = storeProgress(&progress, config.PullBatch.ProgressFilePath)
 		if err != nil {
 			log.Fatal(err)
 		}
