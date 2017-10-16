@@ -31,14 +31,14 @@ type RecipeChildCategory struct {
 	ParentId string `json:"parentCategoryId"`
 }
 
-type RecipeAllCategoryByLevel struct {
-	Large  []RecipeParentCategory `json:"large"`
-	Medium []RecipeChildCategory  `json:"medium"`
-	Small  []RecipeChildCategory  `json:"small"`
+type RecipeCategoryList struct {
+	ByLarge  []RecipeParentCategory `json:"large"`
+	ByMedium []RecipeChildCategory  `json:"medium"`
+	BySmall  []RecipeChildCategory  `json:"small"`
 }
 
-type RecipeAllCategory struct {
-	By RecipeAllCategoryByLevel `json:"result"`
+type RecipeCategoryListAPIResult struct {
+	Categories RecipeCategoryList `json:"result"`
 }
 
 type RecipeCategoryType string
@@ -50,7 +50,7 @@ const (
 	RecipeCategoryAll    RecipeCategoryType = ""
 )
 
-func FetchRecipeCategories(categoryType RecipeCategoryType, appId string) (*RecipeAllCategory, error) {
+func FetchRecipeCategories(categoryType RecipeCategoryType, appId string) (*RecipeCategoryListAPIResult, error) {
 	apiUrl, err := url.Parse(APIEndpoint)
 	if err != nil {
 		return nil, err
@@ -72,12 +72,12 @@ func FetchRecipeCategories(categoryType RecipeCategoryType, appId string) (*Reci
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("Bad status code: url=%v, code=%v, body=%v", apiUrl.String(), resp.Status, string(body))
 	}
-	var allCategory RecipeAllCategory
-	err = json.Unmarshal(body, &allCategory)
+	var result RecipeCategoryListAPIResult
+	err = json.Unmarshal(body, &result)
 	if err != nil {
 		return nil, err
 	}
-	return &allCategory, nil
+	return &result, nil
 }
 
 type RecipeSummary struct {

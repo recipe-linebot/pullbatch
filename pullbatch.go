@@ -19,7 +19,7 @@ import (
 )
 
 type BatchProgress struct {
-	AllCategories     RecipeAllCategory
+	Categories        RecipeCategoryList
 	LargeCategoryIdx  int
 	MediumCategoryIdx int
 	SmallCategoryIdx  int
@@ -139,13 +139,13 @@ func pullRecipes(config *RecipeLinebotConfig) {
 	}
 
 	if !restored {
-		allCategories, err := FetchRecipeCategories(RecipeCategoryAll, config.RakutenAPI.AppId)
+		result, err := FetchRecipeCategories(RecipeCategoryAll, config.RakutenAPI.AppId)
 		if err != nil {
 			log.Fatal(err)
 		}
-		progress.AllCategories = *allCategories
+		progress.Categories = result.Categories
 	}
-	for idx, category := range progress.AllCategories.By.Large {
+	for idx, category := range progress.Categories.ByLarge {
 		if idx <= progress.LargeCategoryIdx {
 			continue
 		}
@@ -159,7 +159,7 @@ func pullRecipes(config *RecipeLinebotConfig) {
 			log.Fatal(err)
 		}
 	}
-	for idx, category := range progress.AllCategories.By.Medium {
+	for idx, category := range progress.Categories.ByMedium {
 		if idx <= progress.MediumCategoryIdx {
 			continue
 		}
@@ -178,7 +178,7 @@ func pullRecipes(config *RecipeLinebotConfig) {
 			log.Fatal(err)
 		}
 	}
-	for idx, category := range progress.AllCategories.By.Small {
+	for idx, category := range progress.Categories.BySmall {
 		if idx <= progress.SmallCategoryIdx {
 			continue
 		}
