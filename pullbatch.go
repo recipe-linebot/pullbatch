@@ -18,14 +18,14 @@ import (
 	"time"
 )
 
-type PullProgress struct {
+type BatchProgress struct {
 	AllCategories     RecipeAllCategory
 	LargeCategoryIdx  int
 	MediumCategoryIdx int
 	SmallCategoryIdx  int
 }
 
-func restoreProgress(restorePath string, progress *PullProgress) error {
+func restoreProgress(restorePath string, progress *BatchProgress) error {
 	restoreFile, err := os.Open(restorePath)
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func restoreProgress(restorePath string, progress *PullProgress) error {
 	return decoder.Decode(&progress)
 }
 
-func storeProgress(progress *PullProgress, storePath string) error {
+func storeProgress(progress *BatchProgress, storePath string) error {
 	storeFile, err := os.OpenFile(storePath, os.O_WRONLY+os.O_CREATE, 0644)
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func pullRecipes(config *RecipeLinebotConfig) {
 	log.Print("start pull batch")
 
 	// Restore the progress up to the previous working
-	var progress PullProgress
+	var progress BatchProgress
 	restored := true
 	err := restoreProgress(config.PullBatch.ProgressFilePath, &progress)
 	if err != nil {
