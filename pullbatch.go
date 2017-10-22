@@ -124,20 +124,20 @@ func pullRecipesOnCategory(categoryID string, categoryName string, config *Recip
 func pullRecipesOnCategoryLevel(categoryType RecipeCategoryType,
 	progress BatchProgress, config *RecipeLinebotConfig) error {
 	for idx, category := range progress.CategoriesByType[categoryType] {
-		categoryID := category.ID
-		if categoryType != RecipeCategoryLarge {
-			if idx <= progress.CategoryIdxByType[categoryType] {
-				continue
-			}
-			categoryURL, err := url.Parse(category.URL)
-			if err != nil {
-				return err
-			}
-			categoryID = path.Base(categoryURL.Path)
+		if idx <= progress.CategoryIdxByType[categoryType] {
+			continue
 		}
-		err := pullRecipesOnCategory(categoryID, category.Name, config)
+		categoryURL, err := url.Parse(category.URL)
 		if err != nil {
 			return err
+		}
+		categoryID := path.Base(categoryURL.Path)
+		err = pullRecipesOnCategory(categoryID, category.Name, config)
+		if err != nil {
+			return err
+		}
+		if progress.CategoryIdxByType == nil {
+			progress.CategoryIdxByType = make(map[RecipeCategoryType]int)
 		}
 		progress.CategoryIdxByType[categoryType] = idx
 		err = storeProgress(&progress, config.PullBatch.ProgressFilePath)
@@ -168,6 +168,7 @@ func pullRecipes(config *RecipeLinebotConfig) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		progress.CategoriesByType = make(map[RecipeCategoryType]RecipeCategoryList)
 		progress.CategoriesByType[RecipeCategoryLarge] = result.Categories.ByLarge
 		progress.CategoriesByType[RecipeCategoryMedium] = result.Categories.ByMedium
 		progress.CategoriesByType[RecipeCategorySmall] = result.Categories.BySmall

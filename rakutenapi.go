@@ -19,10 +19,12 @@ const RecipeCategoryRankingAPIPath = "Recipe/CategoryRanking/"
 const RecipeCategoryRankingAPILatestVersion = "20121121"
 
 type RecipeCategory struct {
-	ID       string `json:"categoryId"`
-	Name     string `json:"categoryName"`
-	URL      string `json:"categoryUrl"`
-	ParentID string `json:"parentCategoryId"`
+	//TODO: categoryId type on JSON API result defer by category type,
+	//      so unmarchaling with same result struct type doen't work well.
+	//ID       int     `json:"categoryId"`
+	Name     string  `json:"categoryName"`
+	URL      string  `json:"categoryUrl"`
+	ParentID *string `json:"parentCategoryId"`
 }
 
 type RecipeCategoryList []RecipeCategory
