@@ -19,16 +19,16 @@ const RecipeCategoryRankingAPIPath = "Recipe/CategoryRanking/"
 const RecipeCategoryRankingAPILatestVersion = "20121121"
 
 type RecipeParentCategory struct {
-	Id   string `json:"categoryId"`
+	ID   string `json:"categoryId"`
 	Name string `json:"categoryName"`
-	Url  string `json:"categoryUrl"`
+	URL  string `json:"categoryUrl"`
 }
 
 type RecipeChildCategory struct {
-	Id       int    `json:"categoryId"`
+	ID       int    `json:"categoryId"`
 	Name     string `json:"categoryName"`
-	Url      string `json:"categoryUrl"`
-	ParentId string `json:"parentCategoryId"`
+	URL      string `json:"categoryUrl"`
+	ParentID string `json:"parentCategoryId"`
 }
 
 type RecipeCategoryList struct {
@@ -50,17 +50,17 @@ const (
 	RecipeCategoryAll    RecipeCategoryType = ""
 )
 
-func FetchRecipeCategories(categoryType RecipeCategoryType, appId string) (*RecipeCategoryListAPIResult, error) {
-	apiUrl, err := url.Parse(APIEndpoint)
+func FetchRecipeCategories(categoryType RecipeCategoryType, appID string) (*RecipeCategoryListAPIResult, error) {
+	apiURL, err := url.Parse(APIEndpoint)
 	if err != nil {
 		return nil, err
 	}
-	apiUrl.Path = path.Join(apiUrl.Path, RecipeCategoryListAPIPath, RecipeCategoryListAPILatestVersion)
-	apiUrl.RawQuery = "applicationId=" + appId
+	apiURL.Path = path.Join(apiURL.Path, RecipeCategoryListAPIPath, RecipeCategoryListAPILatestVersion)
+	apiURL.RawQuery = "applicationId=" + appID
 	if categoryType != RecipeCategoryAll {
-		apiUrl.RawQuery += "&categoryType=" + string(categoryType)
+		apiURL.RawQuery += "&categoryType=" + string(categoryType)
 	}
-	resp, err := http.Get(apiUrl.String())
+	resp, err := http.Get(apiURL.String())
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func FetchRecipeCategories(categoryType RecipeCategoryType, appId string) (*Reci
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Bad status code: url=%v, code=%v, body=%v", apiUrl.String(), resp.Status, string(body))
+		return nil, fmt.Errorf("Bad status code: url=%v, code=%v, body=%v", apiURL.String(), resp.Status, string(body))
 	}
 	var result RecipeCategoryListAPIResult
 	err = json.Unmarshal(body, &result)
@@ -81,12 +81,12 @@ func FetchRecipeCategories(categoryType RecipeCategoryType, appId string) (*Reci
 }
 
 type RecipeSummary struct {
-	Id             int      `json:"recipeId"`
+	ID             int      `json:"recipeId"`
 	Title          string   `json:"recipeTitle"`
-	Url            string   `json:"recipeUrl"`
-	LargeImageUrl  string   `json:"foodImageUrl"`
-	MediumImageUrl string   `json:"mediumImageUrl"`
-	SmallImageUrl  string   `json:"smallImageUrl"`
+	URL            string   `json:"recipeUrl"`
+	LargeImageURL  string   `json:"foodImageUrl"`
+	MediumImageURL string   `json:"mediumImageUrl"`
+	SmallImageURL  string   `json:"smallImageUrl"`
 	PickUp         int      `json:"pickup"`
 	Shop           int      `json:"shop"`
 	Nickname       string   `json:"nickname"`
@@ -102,17 +102,17 @@ type RecipeRanking struct {
 	Recipes []RecipeSummary `json:"result"`
 }
 
-func FetchRecipeRanking(categoryId string, appId string) (*RecipeRanking, error) {
-	apiUrl, err := url.Parse(APIEndpoint)
+func FetchRecipeRanking(categoryID string, appID string) (*RecipeRanking, error) {
+	apiURL, err := url.Parse(APIEndpoint)
 	if err != nil {
 		return nil, err
 	}
-	apiUrl.Path = path.Join(apiUrl.Path, RecipeCategoryRankingAPIPath, RecipeCategoryRankingAPILatestVersion)
-	apiUrl.RawQuery = "applicationId=" + appId
-	if categoryId != "" {
-		apiUrl.RawQuery += "&categoryId=" + categoryId
+	apiURL.Path = path.Join(apiURL.Path, RecipeCategoryRankingAPIPath, RecipeCategoryRankingAPILatestVersion)
+	apiURL.RawQuery = "applicationId=" + appID
+	if categoryID != "" {
+		apiURL.RawQuery += "&categoryId=" + categoryID
 	}
-	resp, err := http.Get(apiUrl.String())
+	resp, err := http.Get(apiURL.String())
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func FetchRecipeRanking(categoryId string, appId string) (*RecipeRanking, error)
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Bad status code: url=%v, code=%v, body=%v", apiUrl.String(), resp.Status, string(body))
+		return nil, fmt.Errorf("Bad status code: url=%v, code=%v, body=%v", apiURL.String(), resp.Status, string(body))
 	}
 	var ranking RecipeRanking
 	err = json.Unmarshal(body, &ranking)
