@@ -19,10 +19,8 @@ import (
 )
 
 type BatchProgress struct {
-	Categories        RecipeCategoryList
-	LargeCategoryIdx  int
-	MediumCategoryIdx int
-	SmallCategoryIdx  int
+	CategoriesByType  map[RecipeCategoryType]RecipeCategoryList
+	CategoryIdxByType map[RecipeCategoryType]int
 }
 
 func restoreProgress(restorePath string, progress *BatchProgress) error {
@@ -123,6 +121,33 @@ func pullRecipesOnCategory(categoryID string, categoryName string, config *Recip
 	return nil
 }
 
+func pullRecipesOnCategoryLevel(categoryType RecipeCategoryType,
+	progress BatchProgress, config *RecipeLinebotConfig) error {
+	for idx, category := range progress.CategoriesByType[categoryType] {
+		categoryID := category.ID
+		if categoryType != RecipeCategoryLarge {
+			if idx <= progress.CategoryIdxByType[categoryType] {
+				continue
+			}
+			categoryURL, err := url.Parse(category.URL)
+			if err != nil {
+				return err
+			}
+			categoryID = path.Base(categoryURL.Path)
+		}
+		err := pullRecipesOnCategory(categoryID, category.Name, config)
+		if err != nil {
+			return err
+		}
+		progress.CategoryIdxByType[categoryType] = idx
+		err = storeProgress(&progress, config.PullBatch.ProgressFilePath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func pullRecipes(config *RecipeLinebotConfig) {
 	log.Print("start pull batch")
 
@@ -143,59 +168,21 @@ func pullRecipes(config *RecipeLinebotConfig) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		progress.Categories = result.Categories
+		progress.CategoriesByType[RecipeCategoryLarge] = result.Categories.ByLarge
+		progress.CategoriesByType[RecipeCategoryMedium] = result.Categories.ByMedium
+		progress.CategoriesByType[RecipeCategorySmall] = result.Categories.BySmall
 	}
-	for idx, category := range progress.Categories.ByLarge {
-		if idx <= progress.LargeCategoryIdx {
-			continue
-		}
-		err = pullRecipesOnCategory(category.ID, category.Name, config)
-		if err != nil {
-			log.Fatal(err)
-		}
-		progress.LargeCategoryIdx = idx
-		err = storeProgress(&progress, config.PullBatch.ProgressFilePath)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err = pullRecipesOnCategoryLevel(RecipeCategoryLarge, progress, config)
+	if err != nil {
+		log.Fatal(err)
 	}
-	for idx, category := range progress.Categories.ByMedium {
-		if idx <= progress.MediumCategoryIdx {
-			continue
-		}
-		categoryURL, err := url.Parse(category.URL)
-		if err != nil {
-			log.Fatal(err)
-		}
-		categoryID := path.Base(categoryURL.Path)
-		err = pullRecipesOnCategory(categoryID, category.Name, config)
-		if err != nil {
-			log.Fatal(err)
-		}
-		progress.MediumCategoryIdx = idx
-		err = storeProgress(&progress, config.PullBatch.ProgressFilePath)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err = pullRecipesOnCategoryLevel(RecipeCategoryMedium, progress, config)
+	if err != nil {
+		log.Fatal(err)
 	}
-	for idx, category := range progress.Categories.BySmall {
-		if idx <= progress.SmallCategoryIdx {
-			continue
-		}
-		categoryURL, err := url.Parse(category.URL)
-		if err != nil {
-			log.Fatal(err)
-		}
-		categoryID := path.Base(categoryURL.Path)
-		err = pullRecipesOnCategory(categoryID, category.Name, config)
-		if err != nil {
-			log.Fatal(err)
-		}
-		progress.SmallCategoryIdx = idx
-		err = storeProgress(&progress, config.PullBatch.ProgressFilePath)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err = pullRecipesOnCategoryLevel(RecipeCategorySmall, progress, config)
+	if err != nil {
+		log.Fatal(err)
 	}
 	err = os.Remove(config.PullBatch.ProgressFilePath)
 	if err != nil {

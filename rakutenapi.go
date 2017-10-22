@@ -18,27 +18,23 @@ const RecipeCategoryListAPILatestVersion = "20121121"
 const RecipeCategoryRankingAPIPath = "Recipe/CategoryRanking/"
 const RecipeCategoryRankingAPILatestVersion = "20121121"
 
-type RecipeParentCategory struct {
-	ID   string `json:"categoryId"`
-	Name string `json:"categoryName"`
-	URL  string `json:"categoryUrl"`
-}
-
-type RecipeChildCategory struct {
-	ID       int    `json:"categoryId"`
+type RecipeCategory struct {
+	ID       string `json:"categoryId"`
 	Name     string `json:"categoryName"`
 	URL      string `json:"categoryUrl"`
 	ParentID string `json:"parentCategoryId"`
 }
 
-type RecipeCategoryList struct {
-	ByLarge  []RecipeParentCategory `json:"large"`
-	ByMedium []RecipeChildCategory  `json:"medium"`
-	BySmall  []RecipeChildCategory  `json:"small"`
+type RecipeCategoryList []RecipeCategory
+
+type RecipeCategoryListsByType struct {
+	ByLarge  RecipeCategoryList `json:"large"`
+	ByMedium RecipeCategoryList `json:"medium"`
+	BySmall  RecipeCategoryList `json:"small"`
 }
 
 type RecipeCategoryListAPIResult struct {
-	Categories RecipeCategoryList `json:"result"`
+	Categories RecipeCategoryListsByType `json:"result"`
 }
 
 type RecipeCategoryType string
