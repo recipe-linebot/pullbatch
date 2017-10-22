@@ -18,14 +18,12 @@ import (
 	"time"
 )
 
-type PullingProgress struct {
-	AllCategories     RecipeAllCategory
-	LargeCategoryIdx  int
-	MediumCategoryIdx int
-	SmallCategoryIdx  int
+type BatchProgress struct {
+	CategoriesByType  map[RecipeCategoryType]RecipeCategoryList
+	CategoryIdxByType map[RecipeCategoryType]int
 }
 
-func restorePullingProgress(restorePath string, progress *PullingProgress) error {
+func restoreProgress(restorePath string, progress *BatchProgress) error {
 	restoreFile, err := os.Open(restorePath)
 	if err != nil {
 		return err
@@ -35,7 +33,7 @@ func restorePullingProgress(restorePath string, progress *PullingProgress) error
 	return decoder.Decode(&progress)
 }
 
-func storePullingProgress(progress *PullingProgress, storePath string) error {
+func storeProgress(progress *BatchProgress, storePath string) error {
 	storeFile, err := os.OpenFile(storePath, os.O_WRONLY+os.O_CREATE, 0644)
 	if err != nil {
 		return err
@@ -49,8 +47,8 @@ type RecipeDocument struct {
 	Materials   []string `json:"materials"`
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
-	ImageUrl    string   `json:"image_url"`
-	DetailUrl   string   `json:"detail_url"`
+	ImageURL    string   `json:"image_url"`
+	DetailURL   string   `json:"detail_url"`
 }
 
 type RankingDocument struct {
@@ -58,32 +56,32 @@ type RankingDocument struct {
 	Recipes []int  `json:"recipes"`
 }
 
-func pullRecipesOnCategory(categoryId string, categoryName string, config *RecipeLinebotConfig) error {
+func pullRecipesOnCategory(categoryID string, categoryName string, config *RecipeLinebotConfig) error {
 	time.Sleep(time.Duration(config.RakutenAPI.CallInterval) * time.Second)
-	ranking, err := FetchRecipeRanking(categoryId, config.RakutenAPI.AppId)
+	ranking, err := FetchRecipeRanking(categoryID, config.RakutenAPI.AppID)
 	if err != nil {
 		return err
 	}
 	if len(ranking.Recipes) == 0 {
-		log.Printf("recipe not found: category=%v(%v)", categoryId, categoryName)
+		log.Printf("recipe not found: category=%v(%v)", categoryID, categoryName)
 	} else {
 		var recipes []int
 		for _, recipe := range ranking.Recipes {
-			log.Printf("post recipe: id=%v, title=%v", recipe.Id, recipe.Title)
-			apiUrl := url.URL{Scheme: "http", Host: config.RecipeDB.Host,
-				Path: path.Join(config.RecipeDB.Index, config.RecipeDB.RecipeDoctype, strconv.Itoa(recipe.Id))}
-			imageUrl, err := url.Parse(recipe.LargeImageUrl)
+			log.Printf("post recipe: id=%v, title=%v", recipe.ID, recipe.Title)
+			apiURL := url.URL{Scheme: "http", Host: config.RecipeDB.Host,
+				Path: path.Join(config.RecipeDB.Index, config.RecipeDB.RecipeDoctype, strconv.Itoa(recipe.ID))}
+			imageURL, err := url.Parse(recipe.LargeImageURL)
 			if err != nil {
 				log.Fatal(err)
 			}
-			imageUrl.Scheme = "https"
+			imageURL.Scheme = "https"
 			document := RecipeDocument{Materials: recipe.Materials, Title: recipe.Title, Description: recipe.Description,
-				ImageUrl: imageUrl.String(), DetailUrl: recipe.Url}
+				ImageURL: imageURL.String(), DetailURL: recipe.URL}
 			reqBody, nil := json.Marshal(document)
 			if err != nil {
 				log.Fatal(err)
 			}
-			resp, err := http.Post(apiUrl.String(), "application/json", bytes.NewBuffer(reqBody))
+			resp, err := http.Post(apiURL.String(), "application/json", bytes.NewBuffer(reqBody))
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -94,19 +92,19 @@ func pullRecipesOnCategory(categoryId string, categoryName string, config *Recip
 				if err == nil {
 					bodyAsString = string(body)
 				}
-				log.Fatalf("Bad status code: url=%v, code=%v, body=%v", apiUrl.String(), resp.Status, bodyAsString)
+				log.Fatalf("Bad status code: url=%v, code=%v, body=%v", apiURL.String(), resp.Status, bodyAsString)
 			}
-			recipes = append(recipes, recipe.Id)
+			recipes = append(recipes, recipe.ID)
 		}
-		log.Printf("post ranking: category=%v(%v), recipes=%v", categoryId, categoryName, recipes)
-		apiUrl := url.URL{Scheme: "http", Host: config.RecipeDB.Host,
-			Path: path.Join(config.RecipeDB.Index, config.RecipeDB.RankingDoctype, categoryId)}
+		log.Printf("post ranking: category=%v(%v), recipes=%v", categoryID, categoryName, recipes)
+		apiURL := url.URL{Scheme: "http", Host: config.RecipeDB.Host,
+			Path: path.Join(config.RecipeDB.Index, config.RecipeDB.RankingDoctype, categoryID)}
 		document := RankingDocument{Concept: categoryName, Recipes: recipes}
 		reqBody, nil := json.Marshal(document)
 		if err != nil {
 			log.Fatal(err)
 		}
-		resp, err := http.Post(apiUrl.String(), "application/json", bytes.NewBuffer(reqBody))
+		resp, err := http.Post(apiURL.String(), "application/json", bytes.NewBuffer(reqBody))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -117,7 +115,34 @@ func pullRecipesOnCategory(categoryId string, categoryName string, config *Recip
 			if err == nil {
 				bodyAsString = string(body)
 			}
-			log.Fatalf("Bad status code: url=%v, code=%v, body=%v", apiUrl.String(), resp.Status, bodyAsString)
+			log.Fatalf("Bad status code: url=%v, code=%v, body=%v", apiURL.String(), resp.Status, bodyAsString)
+		}
+	}
+	return nil
+}
+
+func pullRecipesOnCategoryLevel(categoryType RecipeCategoryType,
+	progress BatchProgress, config *RecipeLinebotConfig) error {
+	for idx, category := range progress.CategoriesByType[categoryType] {
+		categoryID := category.ID
+		if categoryType != RecipeCategoryLarge {
+			if idx <= progress.CategoryIdxByType[categoryType] {
+				continue
+			}
+			categoryURL, err := url.Parse(category.URL)
+			if err != nil {
+				return err
+			}
+			categoryID = path.Base(categoryURL.Path)
+		}
+		err := pullRecipesOnCategory(categoryID, category.Name, config)
+		if err != nil {
+			return err
+		}
+		progress.CategoryIdxByType[categoryType] = idx
+		err = storeProgress(&progress, config.PullBatch.ProgressFilePath)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -127,9 +152,9 @@ func pullRecipes(config *RecipeLinebotConfig) {
 	log.Print("start pull batch")
 
 	// Restore the progress up to the previous working
-	var progress PullingProgress
+	var progress BatchProgress
 	restored := true
-	err := restorePullingProgress(config.PullBatch.ProgressFilePath, &progress)
+	err := restoreProgress(config.PullBatch.ProgressFilePath, &progress)
 	if err != nil {
 		if os.IsNotExist(err) {
 			restored = false
@@ -139,63 +164,25 @@ func pullRecipes(config *RecipeLinebotConfig) {
 	}
 
 	if !restored {
-		allCategories, err := FetchRecipeCategories(RecipeCategoryAll, config.RakutenAPI.AppId)
+		result, err := FetchRecipeCategories(RecipeCategoryAll, config.RakutenAPI.AppID)
 		if err != nil {
 			log.Fatal(err)
 		}
-		progress.AllCategories = *allCategories
+		progress.CategoriesByType[RecipeCategoryLarge] = result.Categories.ByLarge
+		progress.CategoriesByType[RecipeCategoryMedium] = result.Categories.ByMedium
+		progress.CategoriesByType[RecipeCategorySmall] = result.Categories.BySmall
 	}
-	for idx, category := range progress.AllCategories.By.Large {
-		if idx <= progress.LargeCategoryIdx {
-			continue
-		}
-		err = pullRecipesOnCategory(category.Id, category.Name, config)
-		if err != nil {
-			log.Fatal(err)
-		}
-		progress.LargeCategoryIdx = idx
-		err = storePullingProgress(&progress, config.PullBatch.ProgressFilePath)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err = pullRecipesOnCategoryLevel(RecipeCategoryLarge, progress, config)
+	if err != nil {
+		log.Fatal(err)
 	}
-	for idx, category := range progress.AllCategories.By.Medium {
-		if idx <= progress.MediumCategoryIdx {
-			continue
-		}
-		categoryUrl, err := url.Parse(category.Url)
-		if err != nil {
-			log.Fatal(err)
-		}
-		categoryId := path.Base(categoryUrl.Path)
-		err = pullRecipesOnCategory(categoryId, category.Name, config)
-		if err != nil {
-			log.Fatal(err)
-		}
-		progress.MediumCategoryIdx = idx
-		err = storePullingProgress(&progress, config.PullBatch.ProgressFilePath)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err = pullRecipesOnCategoryLevel(RecipeCategoryMedium, progress, config)
+	if err != nil {
+		log.Fatal(err)
 	}
-	for idx, category := range progress.AllCategories.By.Small {
-		if idx <= progress.SmallCategoryIdx {
-			continue
-		}
-		categoryUrl, err := url.Parse(category.Url)
-		if err != nil {
-			log.Fatal(err)
-		}
-		categoryId := path.Base(categoryUrl.Path)
-		err = pullRecipesOnCategory(categoryId, category.Name, config)
-		if err != nil {
-			log.Fatal(err)
-		}
-		progress.SmallCategoryIdx = idx
-		err = storePullingProgress(&progress, config.PullBatch.ProgressFilePath)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err = pullRecipesOnCategoryLevel(RecipeCategorySmall, progress, config)
+	if err != nil {
+		log.Fatal(err)
 	}
 	err = os.Remove(config.PullBatch.ProgressFilePath)
 	if err != nil {

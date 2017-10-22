@@ -15,7 +15,7 @@ type RecipeLinebotConfig struct {
 		ProgressFilePath string `json:"progress_filepath"`
 	} `json:"pull_batch"`
 	RakutenAPI struct {
-		AppId        string `json:"app_id"`
+		AppID        string `json:"app_id"`
 		CallInterval int    `json:"call_interval_sec"`
 	} `json:"rakuten_api"`
 	RecipeDB struct {
